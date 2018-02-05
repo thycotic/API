@@ -8,10 +8,10 @@
     the flexibility to manage, add, and access their secrets
 .EXAMPLE
    Token Authentication:
-        New-SSFolderStructure -FolderName <sting> -GroupName <String> -Url <String "secret server base url"> -Permissions <View, Edit, Owner> -SubFolders <String[]> -UseTokenAuthentication -UserName <String> -Password <String>
+        New-SSFolderStructure -FolderName <sting> -GroupName <String> -Url <String "secret server base url"> -Permission <View, Edit, Owner> -SubFolders <String[]> -UseTokenAuthentication -UserName <String> -Password <String>
 .EXAMPLE
    Integrated Windows Authentication:
-        New-SSFolderStructure -FolderName <sting> -GroupName <String> -Url <String "secret server base url"> -Permissions <View, Edit, Owner> -SubFolders <String[]> -UseDefaultCredentials
+        New-SSFolderStructure -FolderName <sting> -GroupName <String> -Url <String "secret server base url"> -Permission <View, Edit, Owner> -SubFolders <String[]> -UseDefaultCredentials
 .PARAMETER FolderName
     The name of the parent folder for the subfolders we're creating.
 .PARAMETER GroupName
