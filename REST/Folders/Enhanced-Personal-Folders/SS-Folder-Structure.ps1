@@ -3,15 +3,15 @@
    Automate folder creation & permissions assignment for users with Domain Admin accounts
 .DESCRIPTION
     The Script/Functions will pull users from a Secret Server group and creates folders for each user under a parent folder they can all see. The folders for these users will have permissions set to allow 
-    that user access to the folder, and that user only. Like Secret Server's built in personal folders, except this structure supports permission inheritance, subfolder creation, and Secret Policy 
+    that user access to the folder, and that user only. Like Secret Server's built in personal folders, except this structure supports Permissions inheritance, subfolder creation, and Secret Policy 
     assignments. This approach is intended for users with Domain Administrator Credentials, or other privileged credentials you'd like to store in the vault, and have some level of control over, yet giving users
     the flexibility to manage, add, and access their secrets
 .EXAMPLE
    Token Authentication:
-        New-SSFolderStructure -FolderName <sting> -GroupName <String> -Url <String "secret server base url"> -Permission <View, Edit, Owner> -SubFolders <String[]> -UseTokenAuthentication -UserName <String> -Password <String>
+        New-SSFolderStructure -FolderName <sting> -GroupName <String> -Url <String "secret server base url"> -Permissions <View, Edit, Owner> -SubFolders <String[]> -UseTokenAuthentication -UserName <String> -Password <String>
 .EXAMPLE
    Integrated Windows Authentication:
-        New-SSFolderStructure -FolderName <sting> -GroupName <String> -Url <String "secret server base url"> -Permission <View, Edit, Owner> -SubFolders <String[]> -UseDefaultCredentials
+        New-SSFolderStructure -FolderName <sting> -GroupName <String> -Url <String "secret server base url"> -Permissions <View, Edit, Owner> -SubFolders <String[]> -UseDefaultCredentials
 .PARAMETER FolderName
     The name of the parent folder for the subfolders we're creating.
 .PARAMETER GroupName
@@ -52,7 +52,7 @@ Function New-SSFolderStructure
             [parameter(Mandatory=$true,position=2)]
             [ValidateSet("Owner","Edit","View")]
             [String]
-            $Permission,
+            $Permissionss,
 
             [parameter(Mandatory=$true,position=3)]
             [ValidateScript(
