@@ -52,7 +52,7 @@ Function New-SSFolderStructure
             [parameter(Mandatory=$true,position=2)]
             [ValidateSet("Owner","Edit","View")]
             [String]
-            $Permissionss,
+            $Permissions,
 
             [parameter(Mandatory=$true,position=3)]
             [ValidateScript(
