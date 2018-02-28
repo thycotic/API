@@ -92,6 +92,19 @@ Function New-SSFolderStructure
 
     )
     begin{
+        # Error Function
+        function Write-WebError([string]$Prefix){    
+            Write-Host "----- Exception -----"
+            Write-Host  $_.Exception
+            Write-Host  $_.Exception.Response.StatusCode
+            Write-Host  $_.Exception.Response.StatusDescription
+            $result = $_.Exception.Response.GetResponseStream()
+            $reader = New-Object System.IO.StreamReader($result)
+            $reader.BaseStream.Position = 0
+            $reader.DiscardBufferedData()
+            $responseBody = $reader.ReadToEnd()
+            throw $Prefix + $responseBody
+        }
         #region Authentication
             ##########################################################
             #Logic to use token AUTH vs integrated windows credentials
@@ -110,13 +123,7 @@ Function New-SSFolderStructure
                 }
                 catch
                 {
-                    $result = $_.Exception.Response.GetResponseStream();
-                    $reader = New-Object System.IO.StreamReader($result);
-                    $reader.BaseStream.Position = 0;
-                    $reader.DiscardBufferedData();
-                    $responseBody = $reader.ReadToEnd() | ConvertFrom-Json
-                    throw ("Authentication Error" + (" -: $($responseBody.errorCode) - $($responseBody.message)"))
-                    return;
+                    Write-WebError -Prefix "Authentication Error"
                 }
                 $token=$authenticate.access_token
                 $headers=New-Object "System.Collections.Generic.Dictionary[[String],[String]]"
@@ -155,13 +162,7 @@ Function New-SSFolderStructure
             }
             catch
             {
-                $result = $_.Exception.Response.GetResponseStream();
-                $reader = New-Object System.IO.StreamReader($result);
-                $reader.BaseStream.Position = 0;
-                $reader.DiscardBufferedData();
-                $responseBody = $reader.ReadToEnd() | ConvertFrom-Json
-                throw ("Error getting $Type" + (" -: $($responseBody.errorCode) - $($responseBody.message)"))
-                return;
+                Write-WebError -Prefix "Error getting $Type"
             }
             if($Type -eq "folders")
             {
@@ -216,13 +217,7 @@ Function New-SSFolderStructure
         }
         catch
         {
-            $result = $_.Exception.Response.GetResponseStream();
-            $reader = New-Object System.IO.StreamReader($result);
-            $reader.BaseStream.Position = 0;
-            $reader.DiscardBufferedData();
-            $responseBody = $reader.ReadToEnd() | ConvertFrom-Json
-            throw ("Error getting group users" + (" -: $($responseBody.errorCode) - $($responseBody.message)"))
-            return;
+            Write-WebError -Prefix "Error getting group users"
         }
         $UserIds=$groupUsers.records.userId
         $userNames=@{}
@@ -255,13 +250,7 @@ Function New-SSFolderStructure
             }
             catch
             {
-                $result = $_.Exception.Response.GetResponseStream();
-                $reader = New-Object System.IO.StreamReader($result);
-                $reader.BaseStream.Position = 0;
-                $reader.DiscardBufferedData();
-                $responseBody = $reader.ReadToEnd() | ConvertFrom-Json
-                throw ("Error getting child folders" + (" -: $($responseBody.errorCode) - $($responseBody.message)"))
-                return;
+                Write-WebError -Prefix "Error getting child folders"
             }
         }
         ##################################################################################################################################
@@ -287,13 +276,7 @@ Function New-SSFolderStructure
             }
             catch
             {
-                $result = $_.Exception.Response.GetResponseStream();
-                $reader = New-Object System.IO.StreamReader($result);
-                $reader.BaseStream.Position = 0;
-                $reader.DiscardBufferedData();
-                $responseBody = $reader.ReadToEnd() | ConvertFrom-Json
-                throw ("Error creating folder $FolderName" + (" -: $($responseBody.errorCode) - $($responseBody.message)"))
-                return;
+                Write-WebError -Prefix "Error creating parent folder $FolderName"
             }
             Start-Sleep 1
         }
@@ -345,13 +328,7 @@ Function New-SSFolderStructure
             }
             catch
             {
-                $result = $_.Exception.Response.GetResponseStream();
-                $reader = New-Object System.IO.StreamReader($result);
-                $reader.BaseStream.Position = 0;
-                $reader.DiscardBufferedData();
-                $responseBody = $reader.ReadToEnd() | ConvertFrom-Json
-                throw ("Error creating folder $FolderName" + (" -: $($responseBody.errorCode) - $($responseBody.message)"))
-                return;
+                Write-WebError -Prefix "Error creating sub folder $FolderName"
             }
             $folderId=$folderCreate.id
             ###########################################################################################################################################################################
@@ -371,13 +348,7 @@ Function New-SSFolderStructure
             }
             catch
             {
-                $result = $_.Exception.Response.GetResponseStream();
-                $reader = New-Object System.IO.StreamReader($result);
-                $reader.BaseStream.Position = 0;
-                $reader.DiscardBufferedData();
-                $responseBody = $reader.ReadToEnd() | ConvertFrom-Json
-                throw ("Error creating folder $FolderName" + (" -: $($responseBody.errorCode) - $($responseBody.message)"))
-                return;
+                Write-WebError -Prefix "Error deleting permissions on folder ID $folderId"
             }                    
             Start-Sleep -Milliseconds 500
             ###################
@@ -396,13 +367,7 @@ Function New-SSFolderStructure
             }
             catch
             {
-                $result = $_.Exception.Response.GetResponseStream();
-                $reader = New-Object System.IO.StreamReader($result);
-                $reader.BaseStream.Position = 0;
-                $reader.DiscardBufferedData();
-                $responseBody = $reader.ReadToEnd() | ConvertFrom-Json
-                throw ("Error creating folder $FolderName" + (" -: $($responseBody.errorCode) - $($responseBody.message)"))
-                return;
+                Write-WebError -Prefix "Error adding permissions on sub folder ID $folderId"
             }
         }
         #endregion
