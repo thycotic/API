@@ -3,15 +3,15 @@
    Automate folder creation & permissions assignment for users with Domain Admin accounts
 .DESCRIPTION
     The Script/Functions will pull users from a Secret Server group and creates folders for each user under a parent folder they can all see. The folders for these users will have permissions set to allow 
-    that user access to the folder, and that user only. Like Secret Server's built in personal folders, except this structure supports permission inheritance, subfolder creation, and Secret Policy 
+    that user access to the folder, and that user only. Like Secret Server's built in personal folders, except this structure supports Permissions inheritance, subfolder creation, and Secret Policy 
     assignments. This approach is intended for users with Domain Administrator Credentials, or other privileged credentials you'd like to store in the vault, and have some level of control over, yet giving users
     the flexibility to manage, add, and access their secrets
 .EXAMPLE
    Token Authentication:
-        New-SSFolderStructure -FolderName <sting> -GroupName <String> -Url <String "secret server base url"> -Permission <View, Edit, Owner> -SubFolders <String[]> -UseTokenAuthentication -UserName <String> -Password <String>
+        New-SSFolderStructure -FolderName <sting> -GroupName <String> -Url <String "secret server base url"> -Permissions <View, Edit, Owner> -SubFolders <String[]> -UseTokenAuthentication -UserName <String> -Password <String>
 .EXAMPLE
    Integrated Windows Authentication:
-        New-SSFolderStructure -FolderName <sting> -GroupName <String> -Url <String "secret server base url"> -Permission <View, Edit, Owner> -SubFolders <String[]> -UseDefaultCredentials
+        New-SSFolderStructure -FolderName <sting> -GroupName <String> -Url <String "secret server base url"> -Permissions <View, Edit, Owner> -SubFolders <String[]> -UseDefaultCredentials
 .PARAMETER FolderName
     The name of the parent folder for the subfolders we're creating.
 .PARAMETER GroupName
@@ -52,7 +52,7 @@ Function New-SSFolderStructure
             [parameter(Mandatory=$true,position=2)]
             [ValidateSet("Owner","Edit","View")]
             [String]
-            $Permission,
+            $Permissions,
 
             [parameter(Mandatory=$true,position=3)]
             [ValidateScript(
@@ -92,6 +92,19 @@ Function New-SSFolderStructure
 
     )
     begin{
+        # Error Function
+        function Write-WebError([string]$Prefix){    
+            Write-Host "----- Exception -----"
+            Write-Host  $_.Exception
+            Write-Host  $_.Exception.Response.StatusCode
+            Write-Host  $_.Exception.Response.StatusDescription
+            $result = $_.Exception.Response.GetResponseStream()
+            $reader = New-Object System.IO.StreamReader($result)
+            $reader.BaseStream.Position = 0
+            $reader.DiscardBufferedData()
+            $responseBody = $reader.ReadToEnd()
+            throw $Prefix + $responseBody
+        }
         #region Authentication
             ##########################################################
             #Logic to use token AUTH vs integrated windows credentials
@@ -110,13 +123,7 @@ Function New-SSFolderStructure
                 }
                 catch
                 {
-                    $result = $_.Exception.Response.GetResponseStream();
-                    $reader = New-Object System.IO.StreamReader($result);
-                    $reader.BaseStream.Position = 0;
-                    $reader.DiscardBufferedData();
-                    $responseBody = $reader.ReadToEnd() | ConvertFrom-Json
-                    throw ("Authentication Error" + (" -: $($responseBody.errorCode) - $($responseBody.message)"))
-                    return;
+                    Write-WebError -Prefix "Authentication Error"
                 }
                 $token=$authenticate.access_token
                 $headers=New-Object "System.Collections.Generic.Dictionary[[String],[String]]"
@@ -155,13 +162,7 @@ Function New-SSFolderStructure
             }
             catch
             {
-                $result = $_.Exception.Response.GetResponseStream();
-                $reader = New-Object System.IO.StreamReader($result);
-                $reader.BaseStream.Position = 0;
-                $reader.DiscardBufferedData();
-                $responseBody = $reader.ReadToEnd() | ConvertFrom-Json
-                throw ("Error getting $Type" + (" -: $($responseBody.errorCode) - $($responseBody.message)"))
-                return;
+                Write-WebError -Prefix "Error getting $Type"
             }
             if($Type -eq "folders")
             {
@@ -216,13 +217,7 @@ Function New-SSFolderStructure
         }
         catch
         {
-            $result = $_.Exception.Response.GetResponseStream();
-            $reader = New-Object System.IO.StreamReader($result);
-            $reader.BaseStream.Position = 0;
-            $reader.DiscardBufferedData();
-            $responseBody = $reader.ReadToEnd() | ConvertFrom-Json
-            throw ("Error getting group users" + (" -: $($responseBody.errorCode) - $($responseBody.message)"))
-            return;
+            Write-WebError -Prefix "Error getting group users"
         }
         $UserIds=$groupUsers.records.userId
         $userNames=@{}
@@ -255,13 +250,7 @@ Function New-SSFolderStructure
             }
             catch
             {
-                $result = $_.Exception.Response.GetResponseStream();
-                $reader = New-Object System.IO.StreamReader($result);
-                $reader.BaseStream.Position = 0;
-                $reader.DiscardBufferedData();
-                $responseBody = $reader.ReadToEnd() | ConvertFrom-Json
-                throw ("Error getting child folders" + (" -: $($responseBody.errorCode) - $($responseBody.message)"))
-                return;
+                Write-WebError -Prefix "Error getting child folders"
             }
         }
         ##################################################################################################################################
@@ -287,13 +276,7 @@ Function New-SSFolderStructure
             }
             catch
             {
-                $result = $_.Exception.Response.GetResponseStream();
-                $reader = New-Object System.IO.StreamReader($result);
-                $reader.BaseStream.Position = 0;
-                $reader.DiscardBufferedData();
-                $responseBody = $reader.ReadToEnd() | ConvertFrom-Json
-                throw ("Error creating folder $FolderName" + (" -: $($responseBody.errorCode) - $($responseBody.message)"))
-                return;
+                Write-WebError -Prefix "Error creating parent folder $FolderName"
             }
             Start-Sleep 1
         }
@@ -345,13 +328,7 @@ Function New-SSFolderStructure
             }
             catch
             {
-                $result = $_.Exception.Response.GetResponseStream();
-                $reader = New-Object System.IO.StreamReader($result);
-                $reader.BaseStream.Position = 0;
-                $reader.DiscardBufferedData();
-                $responseBody = $reader.ReadToEnd() | ConvertFrom-Json
-                throw ("Error creating folder $FolderName" + (" -: $($responseBody.errorCode) - $($responseBody.message)"))
-                return;
+                Write-WebError -Prefix "Error creating sub folder $FolderName"
             }
             $folderId=$folderCreate.id
             ###########################################################################################################################################################################
@@ -371,13 +348,7 @@ Function New-SSFolderStructure
             }
             catch
             {
-                $result = $_.Exception.Response.GetResponseStream();
-                $reader = New-Object System.IO.StreamReader($result);
-                $reader.BaseStream.Position = 0;
-                $reader.DiscardBufferedData();
-                $responseBody = $reader.ReadToEnd() | ConvertFrom-Json
-                throw ("Error creating folder $FolderName" + (" -: $($responseBody.errorCode) - $($responseBody.message)"))
-                return;
+                Write-WebError -Prefix "Error deleting permissions on folder ID $folderId"
             }                    
             Start-Sleep -Milliseconds 500
             ###################
@@ -396,13 +367,7 @@ Function New-SSFolderStructure
             }
             catch
             {
-                $result = $_.Exception.Response.GetResponseStream();
-                $reader = New-Object System.IO.StreamReader($result);
-                $reader.BaseStream.Position = 0;
-                $reader.DiscardBufferedData();
-                $responseBody = $reader.ReadToEnd() | ConvertFrom-Json
-                throw ("Error creating folder $FolderName" + (" -: $($responseBody.errorCode) - $($responseBody.message)"))
-                return;
+                Write-WebError -Prefix "Error adding permissions on sub folder ID $folderId"
             }
         }
         #endregion
