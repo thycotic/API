@@ -1,5 +1,5 @@
 # Purpose
-This Script is meant to create folders from a Secret Server group to replicate our personal folders, but can manage them without unlimited Admin mode, and apply Secret Policies. This is version one of the Script. You can only specify one group
+This Script is meant to create folders which replicate our personal folders, but with additional capabilities for centralized management through Secret policy, Template Restrictions, etc. A common use case for this example is for personal elevated accounts for various systems.
 
 Synopsis
 --------
