@@ -16,12 +16,14 @@
     The name of the parent folder for the subfolders we're creating.
 .PARAMETER GroupName
     The name of the Secret Server group; Active Directory based, or Secret Server based. Please enter just the name of the group
-.PARAMETER AdminGroupName
-    The name of the Secret Server Administrative group; Active Directory based, or Secret Server based. Please enter just the name of the group
 .PARAMETER Url
     The base Url for Secret Server. https://mysecretserver.(com,local,gov,etc), https://mysecretserver, or https://mysecretserver/SecretServer (Or whatever the application name is if you renamed it in IIS)
 .PARAMETER Permissions
     Mandatory, Choose a permissions level for the users
+.PARAMETER AdminGroupName
+    Not mandatory. The name of the Secret Server Administrative group to Add Secrets to new Enhanced Personal Folders; Active Directory based, or Secret Server based. Please enter just the name of the group
+.PARAMETER AdminPermissions
+    Not mandatory. Currently the only accepted value is the Permissions pair "AddSecret\List" which allows admin group to add secrets and acknowledge that they exist.
 .PARAMETER SubFolders
     Not mandatory. Creates a folder list under each user folder
 .PARAMETER UserDefaultCredentials
@@ -41,17 +43,17 @@ Function New-SSFolderStructure
 {
     [CmdletBinding()]
     Param(
-            [parameter(mandatory=$true,Position=0)]
+            [parameter(mandatory=$true,Position=0,HelpMessage="Enter the name of the folder for which will contain Enhanced Personal Folders")]
             [ValidateNotNullOrEmpty()]
             [String]
             $FolderName,
 
-            [parameter(mandatory=$true,Position=1,HelpMessage="Enter the user group from Secret Server. Name only")]
+            [parameter(mandatory=$true,Position=1,HelpMessage="Enter the end-user group from Secret Server. Name only")]
             [ValidateNotNullOrEmpty()]
             [String]
             $GroupName,
 
-            [parameter(Mandatory=$true,position=2)]
+            [parameter(Mandatory=$true,position=2,HelpMessage="End-user Permissions: Owner,Edit, or View")]
             [ValidateSet("Owner","Edit","View")]
             [String]
             $Permissions,
