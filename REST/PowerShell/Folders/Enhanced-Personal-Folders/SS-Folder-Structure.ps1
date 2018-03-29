@@ -16,7 +16,9 @@
     The name of the parent folder for the subfolders we're creating.
 .PARAMETER GroupName
     The name of the Secret Server group; Active Directory based, or Secret Server based. Please enter just the name of the group
-.PARAMETER Url
+.PARAMETER AdminGroupName
+    The name of the Secret Server Administrative group; Active Directory based, or Secret Server based. Please enter just the name of the group
+    .PARAMETER Url
     The base Url for Secret Server. https://mysecretserver.(com,local,gov,etc), https://mysecretserver, or https://mysecretserver/SecretServer (Or whatever the application name is if you renamed it in IIS)
 .PARAMETER Permissions
     Mandatory, Choose a permissions level for the users
@@ -44,7 +46,7 @@ Function New-SSFolderStructure
             [String]
             $FolderName,
 
-            [parameter(mandatory=$true,Position=1,HelpMessage="Enter the group from Secret Server.Name only")]
+            [parameter(mandatory=$true,Position=1,HelpMessage="Enter the user group from Secret Server. Name only")]
             [ValidateNotNullOrEmpty()]
             [String]
             $GroupName,
@@ -54,7 +56,12 @@ Function New-SSFolderStructure
             [String]
             $Permissions,
 
-            [parameter(Mandatory=$true,position=3)]
+            [parameter(mandatory=$true,Position=3,HelpMessage="Enter the administrative group from Secret Server. Name only")]
+            [ValidateNotNullOrEmpty()]
+            [String]
+            $AdminGroupName,
+
+            [parameter(Mandatory=$true,position=4)]
             [ValidateScript(
             {
                 If($_ -match "^((http|https)://)?([\w+?\.\w+])+([a-zA-Z0-9\~\!\@\#\$\%\^\&\*\(\)_\-\=\+\\\/\?\.\:\;\'\,]*)?$") {
@@ -330,7 +337,10 @@ Function New-SSFolderStructure
             {
                 Write-WebError -Prefix "Error creating sub folder $FolderName"
             }
+
+            # Get Sub-Folder ID for Add/Remove Permissions
             $folderId=$folderCreate.id
+            
             ###########################################################################################################################################################################
             #we need to remove the group permissions from the child folders, since only the end user and the Admin should have access. This can be modified to remove the admin as well
             ###########################################################################################################################################################################
@@ -352,14 +362,14 @@ Function New-SSFolderStructure
             }                    
             Start-Sleep -Milliseconds 500
             ###################
-            #adding permissions
+            # Add End-User Permissions
             ###################
             $userId=$user.Value
             $permissionData=@{
                 folderId=$folderId
                 userId=$userId
-                folderAccessRoleName=$Permission
-                secretAccessRoleName=$Permission
+                folderAccessRoleName=$Permissions
+                secretAccessRoleName=$Permissions
             } | ConvertTo-Json
             try
             {
@@ -367,9 +377,33 @@ Function New-SSFolderStructure
             }
             catch
             {
-                Write-WebError -Prefix "Error adding permissions on sub folder ID $folderId"
+                Write-WebError -Prefix "Error adding end-user permissions on sub folder ID $folderId"
+            }
+
+            ###################
+            # Add Admin Group Permissions - used when Administration group needs explicit folder permissions [Folder: Add Secret, Secret: List]
+            ###################
+            $adminGroup = Get-UniqueRecords -UniqueName $AdminGroupName -Type groups
+            $adminGroupID = $adminGroup.id
+            
+            if ($AdminPermissions = 'AddSecret\List') {
+                
+            }
+
+            $permissionData=@{
+                folderId=$folderId
+                groupId=$adminGroupID
+                folderAccessRoleName=$adminFolderPermissions
+                secretAccessRoleName=$adminUserPermissions
+            } | ConvertTo-Json
+            try
+            {
+                Invoke-RestMethod -Uri ($api+"/folder-permissions") -Method Post -Body $permissionData @params | Out-Null
+            }
+            catch
+            {
+                Write-WebError -Prefix "Error adding administrative permissions on sub folder ID $folderId"
             }
         }
-        #endregion
     }
 }
