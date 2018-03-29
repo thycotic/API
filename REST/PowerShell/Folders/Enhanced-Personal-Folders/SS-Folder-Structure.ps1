@@ -18,7 +18,7 @@
     The name of the Secret Server group; Active Directory based, or Secret Server based. Please enter just the name of the group
 .PARAMETER AdminGroupName
     The name of the Secret Server Administrative group; Active Directory based, or Secret Server based. Please enter just the name of the group
-    .PARAMETER Url
+.PARAMETER Url
     The base Url for Secret Server. https://mysecretserver.(com,local,gov,etc), https://mysecretserver, or https://mysecretserver/SecretServer (Or whatever the application name is if you renamed it in IIS)
 .PARAMETER Permissions
     Mandatory, Choose a permissions level for the users
@@ -56,12 +56,7 @@ Function New-SSFolderStructure
             [String]
             $Permissions,
 
-            [parameter(mandatory=$true,Position=3,HelpMessage="Enter the administrative group from Secret Server. Name only")]
-            [ValidateNotNullOrEmpty()]
-            [String]
-            $AdminGroupName,
-
-            [parameter(Mandatory=$true,position=4)]
+            [parameter(Mandatory=$true,position=3)]
             [ValidateScript(
             {
                 If($_ -match "^((http|https)://)?([\w+?\.\w+])+([a-zA-Z0-9\~\!\@\#\$\%\^\&\*\(\)_\-\=\+\\\/\?\.\:\;\'\,]*)?$") {
@@ -74,6 +69,16 @@ Function New-SSFolderStructure
             ]
             [String]
             $Url,
+
+            [parameter(mandatory=$false,HelpMessage="Enter the administrative group from Secret Server. Name only")]
+            [ValidateNotNullOrEmpty()]
+            [String]
+            $AdminGroupName,
+
+            [parameter(Mandatory=$false,HelpMessage="Enter the administrative permissions from Secret Server. Name only")]
+            [ValidateSet("AddSecret\List")]
+            [String]
+            $AdminPermissions,
 
             [parameter(Mandatory=$false,HelpMessage="This optional parameter creates folders under each user's folder. Enter folder names separated by commas")]
             [String[]]
@@ -383,26 +388,29 @@ Function New-SSFolderStructure
             ###################
             # Add Admin Group Permissions - used when Administration group needs explicit folder permissions [Folder: Add Secret, Secret: List]
             ###################
-            $adminGroup = Get-UniqueRecords -UniqueName $AdminGroupName -Type groups
-            $adminGroupID = $adminGroup.id
-            
-            if ($AdminPermissions = 'AddSecret\List') {
+            if (($AdminPermissions -ne $null) -and ($AdminGroupName -ne $null)) {
+                $adminGroup = Get-UniqueRecords -UniqueName $AdminGroupName -Type groups
+                $adminGroupID = $adminGroup.id
                 
-            }
-
-            $permissionData=@{
-                folderId=$folderId
-                groupId=$adminGroupID
-                folderAccessRoleName=$adminFolderPermissions
-                secretAccessRoleName=$adminUserPermissions
-            } | ConvertTo-Json
-            try
-            {
-                Invoke-RestMethod -Uri ($api+"/folder-permissions") -Method Post -Body $permissionData @params | Out-Null
-            }
-            catch
-            {
-                Write-WebError -Prefix "Error adding administrative permissions on sub folder ID $folderId"
+                if ($AdminPermissions -eq "AddSecret\List") {
+                    $adminFolderPermissions = "AddSecret"
+                    $adminSecretPermissions = "List"
+                }
+    
+                $permissionData=@{
+                    folderId=$folderId
+                    groupId=$adminGroupID
+                    folderAccessRoleName=$adminFolderPermissions
+                    secretAccessRoleName=$adminSecretPermissions
+                } | ConvertTo-Json
+                try
+                {
+                    Invoke-RestMethod -Uri ($api+"/folder-permissions") -Method Post -Body $permissionData @params | Out-Null
+                }
+                catch
+                {
+                    Write-WebError -Prefix "Error adding administrative permissions on sub folder ID $folderId"
+                }
             }
         }
     }
