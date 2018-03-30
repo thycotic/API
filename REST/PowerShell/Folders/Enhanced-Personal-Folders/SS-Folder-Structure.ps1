@@ -293,6 +293,29 @@ Function New-SSFolderStructure
                 Write-WebError -Prefix "Error creating parent folder $FolderName"
             }
             Start-Sleep 1
+
+            # Admin Group View Permission if applicable
+            if (($AdminPermissions -ne $null) -and ($AdminGroupName -ne $null)) {
+                $adminGroup = Get-UniqueRecords -UniqueName $AdminGroupName -Type groups
+                $adminGroupID = $adminGroup.id
+
+                try
+                {
+                $parentFolderPermissionData=@{
+                    folderId=$parentFolderId
+                    groupId=$adminGroupId
+                    folderAccessRoleName="View"
+                    secretAccessRoleName="List"
+                } | ConvertTo-Json
+            
+                Invoke-RestMethod -Uri ($api+"/folder-permissions") -Method Post -Body $parentFolderPermissionData @params | Out-Null
+                }
+                catch
+                {
+                    Write-WebError -Prefix "Error creating parent folder $FolderName permissions for Admin Group"
+                }
+                Start-Sleep 1
+            }
         }
 
         #Begin Subfolders
@@ -391,11 +414,9 @@ Function New-SSFolderStructure
             # Add Admin Group Permissions - used when Administration group needs explicit folder permissions [Folder: Add Secret, Secret: List]
             ###################
             if (($AdminPermissions -ne $null) -and ($AdminGroupName -ne $null)) {
-                $adminGroup = Get-UniqueRecords -UniqueName $AdminGroupName -Type groups
-                $adminGroupID = $adminGroup.id
                 
                 if ($AdminPermissions -eq "AddSecret\List") {
-                    $adminFolderPermissions = "AddSecret"
+                    $adminFolderPermissions = "Add Secret"
                     $adminSecretPermissions = "List"
                 }
     
