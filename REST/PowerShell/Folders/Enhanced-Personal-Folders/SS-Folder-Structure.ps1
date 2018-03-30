@@ -8,18 +8,18 @@
     the flexibility to manage, add, and access their secrets
 .EXAMPLE
    Token Authentication:
-        New-SSFolderStructure -FolderName <sting> -GroupName <String> -Url <String "secret server base url"> -Permissions <View, Edit, Owner> -SubFolders <String[]> -UseTokenAuthentication -UserName <String> -Password <String>
+        New-SSFolderStructure -FolderName <sting> -GroupName <String> -Permissions <View, Edit, Owner> -Url <String "secret server base url"> -SubFolders <String[]> -UseTokenAuthentication -UserName <String> -Password <String>
 .EXAMPLE
    Integrated Windows Authentication:
-        New-SSFolderStructure -FolderName <sting> -GroupName <String> -Url <String "secret server base url"> -Permissions <View, Edit, Owner> -SubFolders <String[]> -UseDefaultCredentials
+        New-SSFolderStructure -FolderName <sting> -GroupName <String> -Permissions <View, Edit, Owner> -Url <String "secret server base url"> -SubFolders <String[]> -UseDefaultCredentials
 .PARAMETER FolderName
     The name of the parent folder for the subfolders we're creating.
 .PARAMETER GroupName
     The name of the Secret Server group; Active Directory based, or Secret Server based. Please enter just the name of the group
-.PARAMETER Url
-    The base Url for Secret Server. https://mysecretserver.(com,local,gov,etc), https://mysecretserver, or https://mysecretserver/SecretServer (Or whatever the application name is if you renamed it in IIS)
 .PARAMETER Permissions
     Mandatory, Choose a permissions level for the users
+    .PARAMETER Url
+    The base Url for Secret Server. https://mysecretserver.(com,local,gov,etc), https://mysecretserver, or https://mysecretserver/SecretServer (Or whatever the application name is if you renamed it in IIS)
 .PARAMETER AdminGroupName
     Not mandatory. The name of the Secret Server Administrative group to Add Secrets to new Enhanced Personal Folders; Active Directory based, or Secret Server based. Please enter just the name of the group
 .PARAMETER AdminPermissions
