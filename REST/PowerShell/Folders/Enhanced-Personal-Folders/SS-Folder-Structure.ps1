@@ -8,20 +8,22 @@
     the flexibility to manage, add, and access their secrets
 .EXAMPLE
    Token Authentication:
-        New-SSFolderStructure -FolderName <sting> -GroupName <String> -Url <String "secret server base url"> -Permissions <View, Edit, Owner> -SubFolders <String[]> -UseTokenAuthentication -UserName <String> -Password <String>
+        New-SSFolderStructure -FolderName <sting> -GroupName <String> -Permissions <View, Edit, Owner> -Url <String "secret server base url"> -SubFolders <String[]> -UseTokenAuthentication -UserName <String> -Password <String>
 .EXAMPLE
    Integrated Windows Authentication:
-        New-SSFolderStructure -FolderName <sting> -GroupName <String> -Url <String "secret server base url"> -Permissions <View, Edit, Owner> -SubFolders <String[]> -UseDefaultCredentials
+        New-SSFolderStructure -FolderName <sting> -GroupName <String> -Permissions <View, Edit, Owner> -Url <String "secret server base url"> -SubFolders <String[]> -UseDefaultCredentials
 .PARAMETER FolderName
     The name of the parent folder for the subfolders we're creating.
 .PARAMETER GroupName
     The name of the Secret Server group; Active Directory based, or Secret Server based. Please enter just the name of the group
-.PARAMETER AdminGroupName
-    The name of the Secret Server Administrative group; Active Directory based, or Secret Server based. Please enter just the name of the group
-    .PARAMETER Url
-    The base Url for Secret Server. https://mysecretserver.(com,local,gov,etc), https://mysecretserver, or https://mysecretserver/SecretServer (Or whatever the application name is if you renamed it in IIS)
 .PARAMETER Permissions
     Mandatory, Choose a permissions level for the users
+    .PARAMETER Url
+    The base Url for Secret Server. https://mysecretserver.(com,local,gov,etc), https://mysecretserver, or https://mysecretserver/SecretServer (Or whatever the application name is if you renamed it in IIS)
+.PARAMETER AdminGroupName
+    Not mandatory. The name of the Secret Server Administrative group to Add Secrets to new Enhanced Personal Folders; Active Directory based, or Secret Server based. Please enter just the name of the group
+.PARAMETER AdminPermissions
+    Not mandatory. Currently the only accepted value is the Permissions pair "AddSecret\List" which allows admin group to add secrets and acknowledge that they exist.
 .PARAMETER SubFolders
     Not mandatory. Creates a folder list under each user folder
 .PARAMETER UserDefaultCredentials
@@ -41,27 +43,22 @@ Function New-SSFolderStructure
 {
     [CmdletBinding()]
     Param(
-            [parameter(mandatory=$true,Position=0)]
+            [parameter(mandatory=$true,Position=0,HelpMessage="Enter the name of the folder for which will contain Enhanced Personal Folders")]
             [ValidateNotNullOrEmpty()]
             [String]
             $FolderName,
 
-            [parameter(mandatory=$true,Position=1,HelpMessage="Enter the user group from Secret Server. Name only")]
+            [parameter(mandatory=$true,Position=1,HelpMessage="Enter the end-user group from Secret Server. Name only")]
             [ValidateNotNullOrEmpty()]
             [String]
             $GroupName,
 
-            [parameter(Mandatory=$true,position=2)]
+            [parameter(Mandatory=$true,position=2,HelpMessage="End-user Permissions: Owner,Edit, or View")]
             [ValidateSet("Owner","Edit","View")]
             [String]
             $Permissions,
 
-            [parameter(mandatory=$true,Position=3,HelpMessage="Enter the administrative group from Secret Server. Name only")]
-            [ValidateNotNullOrEmpty()]
-            [String]
-            $AdminGroupName,
-
-            [parameter(Mandatory=$true,position=4)]
+            [parameter(Mandatory=$true,position=3)]
             [ValidateScript(
             {
                 If($_ -match "^((http|https)://)?([\w+?\.\w+])+([a-zA-Z0-9\~\!\@\#\$\%\^\&\*\(\)_\-\=\+\\\/\?\.\:\;\'\,]*)?$") {
@@ -74,6 +71,16 @@ Function New-SSFolderStructure
             ]
             [String]
             $Url,
+
+            [parameter(mandatory=$false,HelpMessage="Enter the administrative group from Secret Server. Name only")]
+            [ValidateNotNullOrEmpty()]
+            [String]
+            $AdminGroupName,
+
+            [parameter(Mandatory=$false,HelpMessage="Enter the administrative permissions from Secret Server. Name only")]
+            [ValidateSet("AddSecret\List")]
+            [String]
+            $AdminPermissions,
 
             [parameter(Mandatory=$false,HelpMessage="This optional parameter creates folders under each user's folder. Enter folder names separated by commas")]
             [String[]]
@@ -286,6 +293,29 @@ Function New-SSFolderStructure
                 Write-WebError -Prefix "Error creating parent folder $FolderName"
             }
             Start-Sleep 1
+
+            # Admin Group View Permission if applicable
+            if (($AdminPermissions -ne $null) -and ($AdminGroupName -ne $null)) {
+                $adminGroup = Get-UniqueRecords -UniqueName $AdminGroupName -Type groups
+                $adminGroupID = $adminGroup.id
+
+                try
+                {
+                $parentFolderPermissionData=@{
+                    folderId=$parentFolderId
+                    groupId=$adminGroupId
+                    folderAccessRoleName="View"
+                    secretAccessRoleName="List"
+                } | ConvertTo-Json
+            
+                Invoke-RestMethod -Uri ($api+"/folder-permissions") -Method Post -Body $parentFolderPermissionData @params | Out-Null
+                }
+                catch
+                {
+                    Write-WebError -Prefix "Error creating parent folder $FolderName permissions for Admin Group"
+                }
+                Start-Sleep 1
+            }
         }
 
         #Begin Subfolders
@@ -383,26 +413,27 @@ Function New-SSFolderStructure
             ###################
             # Add Admin Group Permissions - used when Administration group needs explicit folder permissions [Folder: Add Secret, Secret: List]
             ###################
-            $adminGroup = Get-UniqueRecords -UniqueName $AdminGroupName -Type groups
-            $adminGroupID = $adminGroup.id
-            
-            if ($AdminPermissions = 'AddSecret\List') {
+            if (($AdminPermissions -ne $null) -and ($AdminGroupName -ne $null)) {
                 
-            }
-
-            $permissionData=@{
-                folderId=$folderId
-                groupId=$adminGroupID
-                folderAccessRoleName=$adminFolderPermissions
-                secretAccessRoleName=$adminUserPermissions
-            } | ConvertTo-Json
-            try
-            {
-                Invoke-RestMethod -Uri ($api+"/folder-permissions") -Method Post -Body $permissionData @params | Out-Null
-            }
-            catch
-            {
-                Write-WebError -Prefix "Error adding administrative permissions on sub folder ID $folderId"
+                if ($AdminPermissions -eq "AddSecret\List") {
+                    $adminFolderPermissions = "Add Secret"
+                    $adminSecretPermissions = "List"
+                }
+    
+                $permissionData=@{
+                    folderId=$folderId
+                    groupId=$adminGroupID
+                    folderAccessRoleName=$adminFolderPermissions
+                    secretAccessRoleName=$adminSecretPermissions
+                } | ConvertTo-Json
+                try
+                {
+                    Invoke-RestMethod -Uri ($api+"/folder-permissions") -Method Post -Body $permissionData @params | Out-Null
+                }
+                catch
+                {
+                    Write-WebError -Prefix "Error adding administrative permissions on sub folder ID $folderId"
+                }
             }
         }
     }
